@@ -41,16 +41,23 @@ export function AuthProvider({ children }) {
     if (!ALLOWED.includes(email)) {
       // Log the failed attempt directly to Supabase
       try {
-        await supabase.from('failed_logins').insert({
-          email,
-          reason: 'not_whitelisted',
-          user_agent: navigator.userAgent,
-          device_type: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
-          screen_width: window.screen.width,
-          screen_height: window.screen.height,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          language: navigator.language,
-          attempted_at: new Date().toISOString(),
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/log-auth-event`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            email,
+            reason: 'not_whitelisted',
+            user_agent: navigator.userAgent,
+            device_type: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+            screen_width: window.screen.width,
+            screen_height: window.screen.height,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            language: navigator.language,
+            referrer: document.referrer || null,
+          }),
         })
       } catch(e) {}
       await supabase.auth.signOut()
