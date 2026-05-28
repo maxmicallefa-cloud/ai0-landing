@@ -83,39 +83,32 @@ export function AuthProvider({ children }) {
   }, [])
 
   async function handleSession(session) {
+  try {
     const email = session.user.email
-
-    // Check whitelist
     if (!ALLOWED_EMAILS.includes(email)) {
       await logFailedLogin(email, 'not_whitelisted')
       await supabase.auth.signOut()
-      setLoading(false)
       return
     }
-
     setSession(session)
-
     try {
       const prof = await getProfile(session.user.id)
       setProfile(prof)
     } catch (e) {
-      console.error('Profile fetch error', e)
+      console.warn('Profile fetch failed:', e.message)
     }
-
-    // Log device info + activity
     logDeviceInfo(session.user.id)
     logActivity(session.user.id, 'login')
-
-    // Store session in localStorage for logs page
     localStorage.setItem('ai0-session', JSON.stringify({
       access_token:  session.access_token,
       refresh_token: session.refresh_token,
       expires_at:    session.expires_at,
       user:          session.user,
     }))
-
-    setLoading(false)
+  } finally {
+    setLoading(false)  // ← ALWAYS runs no matter what
   }
+}
 
   return (
     <AuthContext.Provider value={{ session, profile, loading }}>
