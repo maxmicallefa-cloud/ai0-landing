@@ -1,4 +1,3 @@
-cat > /workspaces/ai0-landing/src/components/AuthProvider.jsx << 'EOF'
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase, getProfile, logDeviceInfo, logActivity } from '../lib/supabase'
 
@@ -55,4 +54,3 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   return useContext(AuthContext)
 }
-EOF
