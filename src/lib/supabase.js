@@ -52,3 +52,11 @@ export async function logActivity(userId, action, app = 'landing') {
 export async function signOut() {
   await supabase.auth.signOut()
 }
+
+export async function signInWithGoogle() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin }
+  })
+  if (error) throw error
+}
