@@ -256,12 +256,10 @@ function renderDash(){
 }
 
 function fmt(ts){
-  if(!ts)return'—'
-  const d=Date.now()-new Date(ts).getTime()
-  if(d<60000)return'just now'
-  if(d<3600000)return Math.floor(d/60000)+'m ago'
-  if(d<86400000)return Math.floor(d/3600000)+'h ago'
-  return new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
+  if(!ts) return '—'
+  const d = new Date(ts)
+  const pad = n => String(n).padStart(2,'0')
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
 async function doConnect(){
