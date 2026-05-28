@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Audit Logs — AI0</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0a0a0a;color:#e0e0d8;font-family:'Inter',sans-serif;font-size:14px;min-height:100vh}
@@ -301,8 +301,13 @@ async function doConnect() {
   if (!url || !key) { state.err = 'Both fields are required.'; render(); return }
   localStorage.setItem(SB_URL_KEY, url)
   localStorage.setItem(SB_KEY_KEY, key)
-  sb = supabase.createClient(url, key)
-  await checkSession()
+  try {
+    sb = window.supabase.createClient(url, key)
+    await checkSession()
+  } catch(e) {
+    state.err = 'Connection failed: ' + e.message
+    render()
+  }
 }
 
 async function doSignOut() {
