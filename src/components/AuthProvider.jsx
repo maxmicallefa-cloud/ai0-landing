@@ -1,3 +1,7 @@
+const [session, setSession]   = useState(null)
+const [profile, setProfile]   = useState(null)
+const [loading, setLoading]   = useState(true)
+const [denied,  setDenied]    = useState(false)
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase, getProfile, logDeviceInfo, logActivity } from '../lib/supabase'
 
@@ -88,6 +92,7 @@ export function AuthProvider({ children }) {
     if (!ALLOWED_EMAILS.includes(email)) {
       await logFailedLogin(email, 'not_whitelisted')
       await supabase.auth.signOut()
+      setDenied(true)
       return
     }
     setSession(session)
@@ -111,7 +116,7 @@ export function AuthProvider({ children }) {
 }
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading }}>
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, profile, loading, denied }}>
       {children}
     </AuthContext.Provider>
   )
