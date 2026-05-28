@@ -11,14 +11,23 @@ export function AuthProvider({ children }) {
   const [denied,  setDenied]  = useState(false)
 
   useEffect(() => {
+    // Read session directly from localStorage as immediate fallback
+    try {
+      const stored = JSON.parse(localStorage.getItem('sb-rnneagijosmsvbakzhpc-auth-token'))
+      if (stored?.user) handleSession(stored)
+    } catch(e) {}
+
+    // Also do the proper async check
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) handleSession(session)
       else setLoading(false)
     })
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) await handleSession(session)
       if (event === 'SIGNED_OUT') { setSession(null); setProfile(null) }
     })
+
     return () => subscription.unsubscribe()
   }, [])
 
