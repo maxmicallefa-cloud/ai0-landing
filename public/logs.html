@@ -257,14 +257,8 @@ async function doConnect() {
     const sbKey = 'sb-'+url.replace('https://','').replace('.supabase.co','').replace(/[^a-z0-9]/g,'').substring(0,20)+'-auth-token'
     let token = null
     // Try common key formats
-    for (const k of Object.keys(localStorage)) {
-      if (k.includes('auth-token') || k.includes('supabase')) {
-        try {
-          const val = JSON.parse(localStorage.getItem(k))
-          if (val?.access_token) { token = val.access_token; break }
-        } catch(e) {}
-      }
-    }
+    const session = JSON.parse(localStorage.getItem('ai0-session') || '{}')
+    if (session?.access_token) token = session.access_token
     if (token) {
       CFG.token = token
       localStorage.setItem(K_TOK, token)
