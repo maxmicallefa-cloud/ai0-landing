@@ -161,18 +161,24 @@ function renderDash(){
     </div></div>`}`:'';
 
   // Devices tab
-  const devHtml=ST.tab==='devices'?`
-    <table><thead><tr><th>USER</th><th>DEVICE</th><th>OS</th><th>BROWSER</th><th>SCREEN</th><th>TIMEZONE</th><th>TIME</th></tr></thead><tbody>
-    ${ST.devices.map(d=>{const usr=um[d.user_id];return`<tr>
-      <td><span class="fb">${(usr?.email||'?')[0].toUpperCase()}</span>${usr?.email||'—'}</td>
-      <td style="color:#888">${d.device_type||'—'}</td>
-      <td style="color:#888">${d.os||'—'}</td>
-      <td style="color:#888">${d.browser||'—'}</td>
-      <td style="color:#555">${d.screen_width&&d.screen_height?d.screen_width+'×'+d.screen_height:'—'}</td>
-      <td style="color:#555;font-size:11px">${d.timezone||'—'}</td>
-      <td style="color:#555">${fmt(d.logged_at)}</td>
-    </tr>`}).join('')}
-    </tbody></table>`:'';
+    const devHtml = ST.tab === 'devices' ? `
+    <table><thead><tr>
+        <th>USER</th><th>IP ADDRESS</th><th>LOCATION</th><th>ISP</th><th>DEVICE</th><th>OS</th><th>BROWSER</th><th>TIME</th>
+    </tr></thead><tbody>
+    ${ST.devices.map(d => {
+        const usr = userMap[d.user_id]
+        return `<tr>
+        <td><span class="fb">${(usr?.email||'?')[0].toUpperCase()}</span>${usr?.email||'—'}</td>
+        <td style="font-family:'Space Mono',monospace;font-size:11px;color:#ffd040">${d.ip_address||'—'}</td>
+        <td style="color:#888;font-size:11px">${[d.city,d.country].filter(Boolean).join(', ')||'—'}</td>
+        <td style="color:#666;font-size:11px">${d.isp||'—'}</td>
+        <td style="color:#888">${d.device_type||'—'}</td>
+        <td style="color:#888">${d.os||'—'}</td>
+        <td style="color:#888">${d.browser||'—'}</td>
+        <td style="color:#555">${fmt(d.logged_at)}</td>
+        </tr>`
+    }).join('')}
+    </tbody></table>` : ''
 
   // Users tab
   const usersHtml=ST.tab==='users'?`
