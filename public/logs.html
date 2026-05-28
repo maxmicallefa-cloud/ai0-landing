@@ -166,7 +166,7 @@ function renderDash(){
         <th>USER</th><th>IP ADDRESS</th><th>LOCATION</th><th>ISP</th><th>DEVICE</th><th>OS</th><th>BROWSER</th><th>TIME</th>
     </tr></thead><tbody>
     ${ST.devices.map(d => {
-        const usr = userMap[d.user_id]
+        const usr = um[d.user_id]
         return `<tr>
         <td><span class="fb">${(usr?.email||'?')[0].toUpperCase()}</span>${usr?.email||'—'}</td>
         <td style="font-family:'Space Mono',monospace;font-size:11px;color:#ffd040">${d.ip_address||'—'}</td>
