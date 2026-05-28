@@ -29,7 +29,7 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  function handleSession(session) {
+  async function handleSession(session) {
     if (!session?.user) {
       setUser(null)
       setLoading(false)
