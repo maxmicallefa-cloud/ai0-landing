@@ -1,68 +1,89 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { supabase, getProfile, logDeviceInfo, logActivity } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 
-const ALLOWED_EMAILS = ['maxmicallefa@gmail.com', 'leontrebor112@gmail.com']
-const AuthContext = createContext(null)
+const ALLOWED = ['maxmicallefa@gmail.com', 'leontrebor112@gmail.com']
+const Ctx = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [session, setSession] = useState(null)
-  const [profile, setProfile] = useState(null)
+  const [user,    setUser]    = useState(null)
   const [loading, setLoading] = useState(true)
   const [denied,  setDenied]  = useState(false)
 
   useEffect(() => {
-    // Immediate fallback from localStorage
-    try {
-      const stored = JSON.parse(localStorage.getItem('sb-rnneagijosmsvbakzhpc-auth-token'))
-      if (stored?.access_token && stored?.user) {
-        setSession(stored)
-        setLoading(false)
-      }
-    } catch(e) {}
-
-    // Proper async session check
+    // Check session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) handleSession(session)
-      else setLoading(false)
+      handleSession(session)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) await handleSession(session)
-      if (event === 'SIGNED_OUT') { setSession(null); setProfile(null) }
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      handleSession(session)
     })
 
-    return () => subscription.unsubscribe()
+    // Safety timeout — never stay stuck loading
+    const timeout = setTimeout(() => setLoading(false), 5000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [])
 
-  async function handleSession(sess) {
-    try {
-      if (!ALLOWED_EMAILS.includes(sess.user.email)) {
-        await supabase.auth.signOut()
-        setDenied(true)
-        return
-      }
-      setSession(sess)
-      try { setProfile(await getProfile(sess.user.id)) } catch(e) {}
-      logDeviceInfo(sess.user.id)
-      logActivity(sess.user.id, 'login')
-      localStorage.setItem('ai0-session', JSON.stringify({
-        access_token: sess.access_token,
-        refresh_token: sess.refresh_token,
-        expires_at: sess.expires_at,
-        user: sess.user,
-      }))
-    } finally {
+  function handleSession(session) {
+    if (!session?.user) {
+      setUser(null)
       setLoading(false)
+      return
     }
+
+    const email = session.user.email
+
+    if (!ALLOWED.includes(email)) {
+      supabase.auth.signOut()
+      setUser(null)
+      setDenied(true)
+      setLoading(false)
+      return
+    }
+
+    // Store session for logs page
+    localStorage.setItem('ai0-session', JSON.stringify({
+      access_token:  session.access_token,
+      refresh_token: session.refresh_token,
+      expires_at:    session.expires_at,
+      user:          session.user,
+    }))
+
+    setUser(session.user)
+    setDenied(false)
+    setLoading(false)
+
+    // Log activity in background — don't await
+    logActivity(session.user.id)
+  }
+
+  async function logActivity(userId) {
+    try {
+      await supabase.from('activity_logs').insert({
+        user_id: userId, app: 'landing', action: 'login',
+        logged_at: new Date().toISOString(),
+      })
+    } catch(e) {}
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut()
+    localStorage.removeItem('ai0-session')
+    setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, profile, loading, denied }}>
+    <Ctx.Provider value={{ user, loading, denied, signOut }}>
       {children}
-    </AuthContext.Provider>
+    </Ctx.Provider>
   )
 }
 
 export function useAuth() {
-  return useContext(AuthContext)
+  return useContext(Ctx)
 }

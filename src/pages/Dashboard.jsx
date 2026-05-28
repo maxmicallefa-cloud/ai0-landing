@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../components/AuthProvider'
 import { supabase } from '../lib/supabase'
 
 const SUPER_EMAIL = 'maxmicallefa@gmail.com'
@@ -52,23 +53,16 @@ const APPS = [
 ]
 
 export default function Dashboard() {
-  const navigate    = useNavigate()
-  const [user,      setUser]      = useState(null)
-  const [score,     setScore]     = useState(0)
-  const [isSuper,   setIsSuper]   = useState(false)
-  const [menuOpen,  setMenuOpen]  = useState(false)
-  const menuRef     = useRef(null)
+  const { user, signOut } = useAuth()
+  const navigate = useNavigate()
+  const [score,    setScore]   = useState(0)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef(null)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) { navigate('/login'); return }
-      const u = session.user
-      setUser(u)
-      setIsSuper(u.email === SUPER_EMAIL)
-      loadScore(u.id)
-      logActivity(u.id, 'dashboard_view')
-    })
-  }, [navigate])
+    if (!user) return
+    loadScore(user.id)
+  }, [user])
 
   useEffect(() => {
     const handler = (e) => {
@@ -80,61 +74,49 @@ export default function Dashboard() {
 
   const loadScore = async (userId) => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('score')
-        .eq('id', userId)
-        .single()
-      if (!error && data) setScore(data.score ?? 0)
-    } catch (e) {
-      console.warn('loadScore:', e.message)
-    }
-  }
-
-  const logActivity = async (userId, action) => {
-    try {
-      await supabase.from('activity_logs').insert({
-        user_id: userId, app: 'landing', action,
-        logged_at: new Date().toISOString(),
-      })
-    } catch (e) {
-      console.warn('logActivity:', e.message)
-    }
+      const { data } = await supabase
+        .from('profiles').select('score').eq('id', userId).single()
+      if (data) setScore(data.score ?? 0)
+    } catch(e) {}
   }
 
   const handleSignOut = async () => {
-    if (user) await logActivity(user.id, 'logout')
-    await supabase.auth.signOut()
+    await signOut()
     navigate('/login')
   }
 
   const handleAppClick = (app) => {
     if (!app.live) return
-    if (user) logActivity(user.id, `open_${app.id}`)
+    try {
+      supabase.from('activity_logs').insert({
+        user_id: user.id, app: app.id, action: `open_${app.id}`,
+        logged_at: new Date().toISOString(),
+      })
+    } catch(e) {}
     window.location.href = app.href
   }
 
-  const name    = user?.user_metadata?.full_name || user?.email || ''
-  const email   = user?.email || ''
-  const avatar  = user?.user_metadata?.avatar_url
+  if (!user) return null
+
+  const name    = user.user_metadata?.full_name || user.email || ''
+  const email   = user.email || ''
+  const avatar  = user.user_metadata?.avatar_url
   const initial = name ? name[0].toUpperCase() : '?'
+  const isSuper = email === SUPER_EMAIL
   const hour    = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 
   return (
     <div style={s.root}>
-
       <header style={s.header}>
         <span style={s.logo}>AI<span style={{ color: '#e0e0d8' }}>0</span></span>
 
         <div style={s.right}>
-          {/* Score */}
           <div style={s.scorePill}>
             <span style={s.scoreNum}>{score.toLocaleString()}</span>
             <span style={s.scoreLbl}>pts</span>
           </div>
 
-          {/* Logs — SuperAdmin only */}
           {isSuper && (
             <a href="/logs.html" style={s.logsBtn}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -147,7 +129,6 @@ export default function Dashboard() {
             </a>
           )}
 
-          {/* User menu */}
           <div style={{ position: 'relative' }} ref={menuRef}>
             <button style={s.userChip} onClick={() => setMenuOpen(p => !p)}>
               {avatar
@@ -171,9 +152,7 @@ export default function Dashboard() {
                     {isSuper && <div style={s.superBadge}>⚡ SuperAdmin</div>}
                   </div>
                 </div>
-
                 <div style={s.menuDivider} />
-
                 <div style={s.menuStats}>
                   <div style={s.menuStat}>
                     <span style={s.menuStatNum}>{score.toLocaleString()}</span>
@@ -184,15 +163,12 @@ export default function Dashboard() {
                     <span style={s.menuStatLbl}>apps live</span>
                   </div>
                 </div>
-
                 <div style={s.menuDivider} />
-
-                {isSuper && (
-                  <a href="/logs.html" style={s.menuItem}>📋 Audit Logs</a>
-                )}
-                <button style={{ ...s.menuItem, color: '#ff5040', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }} onClick={handleSignOut}>
-                  Sign out
-                </button>
+                {isSuper && <a href="/logs.html" style={s.menuItem}>📋 Audit Logs</a>}
+                <button
+                  style={{ ...s.menuItem, color: '#ff5040', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}
+                  onClick={handleSignOut}
+                >Sign out</button>
               </div>
             )}
           </div>
@@ -200,9 +176,8 @@ export default function Dashboard() {
       </header>
 
       <main style={s.main}>
-        <h1 style={s.greeting}>{greeting}{name ? `, ${name.split(' ')[0]}` : ''}.</h1>
+        <h1 style={s.greeting}>{greeting}, {name.split(' ')[0]}.</h1>
         <p style={s.sub}>Choose an app to launch.</p>
-
         <div style={s.grid}>
           {APPS.map(app => (
             <button
