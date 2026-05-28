@@ -4,23 +4,58 @@ import { supabase } from '../lib/supabase'
 const ALLOWED = ['maxmicallefa@gmail.com', 'leontrebor112@gmail.com']
 const Ctx = createContext(null)
 
+function getDevicePayload(extra = {}) {
+  const ua = navigator.userAgent
+  return {
+    user_agent:    ua,
+    device_type:   /Mobile|Android|iPhone/i.test(ua) ? 'mobile' : 'desktop',
+    os:            /Windows/i.test(ua) ? 'Windows' : /Mac/i.test(ua) ? 'macOS' :
+                   /Android/i.test(ua) ? 'Android' : /iPhone|iPad/i.test(ua) ? 'iOS' : 'Linux',
+    browser:       /Edg/i.test(ua) ? 'Edge' : /Chrome/i.test(ua) ? 'Chrome' :
+                   /Firefox/i.test(ua) ? 'Firefox' : /Safari/i.test(ua) ? 'Safari' : 'Other',
+    screen_width:  window.screen.width,
+    screen_height: window.screen.height,
+    timezone:      Intl.DateTimeFormat().resolvedOptions().timeZone,
+    language:      navigator.language,
+    referrer:      document.referrer || null,
+    ...extra,
+  }
+}
+
+async function callEdgeFn(payload) {
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/log-auth-event`
+  console.log('Calling edge function:', url, payload)
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify(payload),
+    })
+    const data = await res.json()
+    console.log('Edge function response:', res.status, data)
+  } catch(e) {
+    console.error('Edge function error:', e.message)
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user,    setUser]    = useState(null)
   const [loading, setLoading] = useState(true)
   const [denied,  setDenied]  = useState(false)
 
   useEffect(() => {
-    // Check session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       handleSession(session)
     })
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       handleSession(session)
     })
 
-    // Safety timeout — never stay stuck loading
     const timeout = setTimeout(() => setLoading(false), 5000)
 
     return () => {
@@ -39,27 +74,7 @@ export function AuthProvider({ children }) {
     const email = session.user.email
 
     if (!ALLOWED.includes(email)) {
-      // Log the failed attempt directly to Supabase
-      try {
-        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/log-auth-event`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({
-            email,
-            reason: 'not_whitelisted',
-            user_agent: navigator.userAgent,
-            device_type: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
-            screen_width: window.screen.width,
-            screen_height: window.screen.height,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            language: navigator.language,
-            referrer: document.referrer || null,
-          }),
-        })
-      } catch(e) {}
+      await callEdgeFn(getDevicePayload({ email, reason: 'not_whitelisted' }))
       await supabase.auth.signOut()
       setUser(null)
       setDenied(true)
@@ -67,7 +82,30 @@ export function AuthProvider({ children }) {
       return
     }
 
-    // Store session for logs page
+    // Successful login — log device + IP
+    callEdgeFn(getDevicePayload({
+      email,
+      reason: 'success',
+      user_id: session.user.id,
+    }))
+
+    // Also log to activity_logs
+    try {
+      await supabase.from('activity_logs').insert({
+        user_id: session.user.id, app: 'landing', action: 'login',
+        logged_at: new Date().toISOString(),
+      })
+    } catch(e) {}
+
+    // Also log device info
+    try {
+      await supabase.from('device_logs').insert({
+        user_id:      session.user.id,
+        ...getDevicePayload(),
+        logged_at:    new Date().toISOString(),
+      })
+    } catch(e) {}
+
     localStorage.setItem('ai0-session', JSON.stringify({
       access_token:  session.access_token,
       refresh_token: session.refresh_token,
@@ -78,18 +116,6 @@ export function AuthProvider({ children }) {
     setUser(session.user)
     setDenied(false)
     setLoading(false)
-
-    // Log activity in background — don't await
-    logActivity(session.user.id)
-  }
-
-  async function logActivity(userId) {
-    try {
-      await supabase.from('activity_logs').insert({
-        user_id: userId, app: 'landing', action: 'login',
-        logged_at: new Date().toISOString(),
-      })
-    } catch(e) {}
   }
 
   async function signOut() {
