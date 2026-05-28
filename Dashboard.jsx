@@ -1,114 +1,161 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase, signOut, logActivity } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
+
+const SUPER_EMAIL = 'maxmicallefa@gmail.com'
 
 const APPS = [
   {
     id: 'snake',
     name: 'Snake',
-    icon: '🐍',
+    emoji: '🐍',
     desc: 'Classic snake — 3 difficulties, 10 levels.',
     color: '#b8ff57',
     bg: '#0a1a00',
+    border: '#b8ff5730',
     href: import.meta.env.VITE_SNAKE_URL || 'https://ai0-snake.pages.dev',
-    status: 'live',
+    live: true,
   },
   {
     id: 'rank',
     name: 'Rank',
-    icon: '🏹',
+    emoji: '🏹',
     desc: 'Bow & arrow — 20 ranks. Can you beat Max?',
     color: '#ffd040',
-    bg: '#1a1400',
+    bg: '#1a1200',
+    border: '#ffd04030',
     href: import.meta.env.VITE_RANK_URL || 'https://aio-rank.pages.dev',
-    status: 'live',
+    live: true,
   },
   {
     id: 'notes',
     name: 'Notes',
-    icon: '📝',
-    desc: 'Block-based notes with folders, tags & real-time sync.',
+    emoji: '📝',
+    desc: 'Block notes with folders, tags & real-time sync.',
     color: '#57b8ff',
     bg: '#00101a',
+    border: '#57b8ff30',
     href: import.meta.env.VITE_NOTES_URL || 'https://ai0-notes.pages.dev',
-    status: 'live',
+    live: true,
   },
   {
     id: 'eyepik',
     name: 'EyePik',
-    icon: '📄',
-    desc: 'AI-powered accountancy & document management.',
+    emoji: '📄',
+    desc: 'AI-powered Maltese accountancy documents.',
     color: '#bf57ff',
     bg: '#0e001a',
+    border: '#bf57ff20',
     href: import.meta.env.VITE_EYEPIK_URL || '#',
-    status: 'soon',
+    live: false,
   },
 ]
 
 export default function Dashboard() {
   const navigate  = useNavigate()
-  const [user, setUser]   = useState(null)
-  const [score, setScore] = useState(0)
+  const [user,   setUser]   = useState(null)
+  const [score,  setScore]  = useState(0)
+  const [isSuper, setIsSuper] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) { navigate('/login'); return }
-      setUser(session.user)
-      loadProfile(session.user.id)
-      logActivity({ userId: session.user.id, action: 'dashboard_view' })
+      const u = session.user
+      setUser(u)
+      setIsSuper(u.email === SUPER_EMAIL)
+      loadProfile(u.id)
+      logActivity(u.id, 'dashboard_view')
     })
   }, [navigate])
 
   const loadProfile = async (userId) => {
     const { data } = await supabase
       .from('profiles')
-      .select('score, display_name')
+      .select('score')
       .eq('id', userId)
       .single()
     if (data) setScore(data.score ?? 0)
   }
 
+  const logActivity = async (userId, action) => {
+    await supabase.from('activity_logs').insert({
+      user_id: userId, app: 'landing', action,
+      logged_at: new Date().toISOString(),
+    }).catch(() => {})
+  }
+
   const handleSignOut = async () => {
-    if (user) logActivity({ userId: user.id, action: 'logout' })
-    await signOut()
+    if (user) logActivity(user.id, 'logout')
+    await supabase.auth.signOut()
     navigate('/login')
   }
 
   const handleAppClick = (app) => {
-    if (app.status === 'soon') return
-    if (user) logActivity({ userId: user.id, action: `open_${app.id}` })
+    if (!app.live) return
+    if (user) logActivity(user.id, `open_${app.id}`)
     window.location.href = app.href
   }
 
   const name   = user?.user_metadata?.full_name || user?.email || ''
   const avatar = user?.user_metadata?.avatar_url
+  const initials = name ? name[0].toUpperCase() : '?'
 
   return (
     <div style={s.root}>
-      {/* Header */}
+
+      {/* ── Header ─────────────────────────────────────────────────────── */}
       <header style={s.header}>
-        <span style={s.logo}>AI<span style={s.zero}>0</span></span>
+        <span style={s.logo}>AI<span style={{ color: '#e0e0d8' }}>0</span></span>
 
-        <div style={s.userArea}>
-          <span style={s.scoreLabel}>
-            <span style={s.scoreNum}>{score.toLocaleString()}</span> pts
-          </span>
+        <div style={s.headerRight}>
 
-          <div style={s.userInfo}>
+          {/* Score */}
+          <div style={s.scorePill}>
+            <span style={s.scoreNum}>{score.toLocaleString()}</span>
+            <span style={s.scoreLbl}>pts</span>
+          </div>
+
+          {/* Logs icon — SuperAdmin only */}
+          {isSuper && (
+            <a
+              href={import.meta.env.VITE_LOGS_URL || 'https://ai0-landing.pages.dev/logs'}
+              style={s.logsBtn}
+              title="Audit Logs (SuperAdmin)"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+              </svg>
+              Logs
+            </a>
+          )}
+
+          {/* User */}
+          <div style={s.userChip}>
             {avatar
               ? <img src={avatar} style={s.avatar} alt={name} />
-              : <div style={s.avatarFallback}>{name[0]?.toUpperCase()}</div>
+              : <div style={s.avatarFallback}>{initials}</div>
             }
-            <span style={s.userName}>{name.split(' ')[0]}</span>
+            <div style={s.userMeta}>
+              <span style={s.userName}>{name.split(' ')[0]}</span>
+              {isSuper && <span style={s.superBadge}>SuperAdmin</span>}
+            </div>
           </div>
 
           <button style={s.signOutBtn} onClick={handleSignOut}>Sign out</button>
         </div>
       </header>
 
-      {/* Grid */}
+      {/* ── Main ───────────────────────────────────────────────────────── */}
       <main style={s.main}>
-        <h1 style={s.greeting}>Welcome back{name ? `, ${name.split(' ')[0]}` : ''}.</h1>
+        <h1 style={s.greeting}>
+          Good{new Date().getHours() < 12 ? ' morning' : new Date().getHours() < 18 ? ' afternoon' : ' evening'}
+          {name ? `, ${name.split(' ')[0]}` : ''}.
+        </h1>
+        <p style={s.sub}>Choose an app to launch.</p>
 
         <div style={s.grid}>
           {APPS.map(app => (
@@ -117,18 +164,22 @@ export default function Dashboard() {
               style={{
                 ...s.card,
                 background: app.bg,
-                borderColor: app.status === 'soon' ? '#1e1e1e' : `${app.color}30`,
-                opacity: app.status === 'soon' ? 0.5 : 1,
-                cursor: app.status === 'soon' ? 'not-allowed' : 'pointer',
+                borderColor: app.live ? app.border : '#1a1a1a',
+                cursor: app.live ? 'pointer' : 'default',
+                opacity: app.live ? 1 : 0.45,
               }}
               onClick={() => handleAppClick(app)}
+              disabled={!app.live}
             >
-              <div style={s.cardIcon}>{app.icon}</div>
-              <div style={s.cardName} color={app.color}>{app.name}</div>
+              {/* Live dot */}
+              {app.live && <div style={{ ...s.liveDot, background: app.color }} />}
+
+              <div style={s.cardEmoji}>{app.emoji}</div>
+              <div style={{ ...s.cardName, color: app.color }}>{app.name}</div>
               <div style={s.cardDesc}>{app.desc}</div>
-              {app.status === 'soon' && <div style={s.soonBadge}>Coming soon</div>}
-              {app.status === 'live'  && (
-                <div style={{ ...s.liveDot, background: app.color }} />
+
+              {!app.live && (
+                <div style={s.soonBadge}>Coming soon</div>
               )}
             </button>
           ))}
@@ -139,47 +190,192 @@ export default function Dashboard() {
 }
 
 const s = {
-  root: { minHeight: '100vh', background: '#0a0a0a', color: '#e0e0d8', fontFamily: "'Inter', sans-serif" },
+  root: {
+    minHeight: '100vh',
+    background: '#0a0a0a',
+    color: '#e0e0d8',
+    fontFamily: "'Inter', sans-serif",
+  },
+
+  // ── Header ──────────────────────────────────────────────────────────────
   header: {
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '14px 28px', borderBottom: '1px solid #181818', background: '#0e0e0e',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '0 24px',
+    height: 52,
+    background: '#0e0e0e',
+    borderBottom: '1px solid #1a1a1a',
+    position: 'sticky',
+    top: 0,
+    zIndex: 20,
   },
-  logo: { fontFamily: "'Space Mono',monospace", fontSize: 18, fontWeight: 700, color: '#b8ff57', letterSpacing: '0.05em' },
-  zero: { color: '#e0e0d8' },
-  userArea: { display: 'flex', alignItems: 'center', gap: 16 },
-  scoreLabel: { fontSize: 12, color: '#555' },
-  scoreNum: { color: '#b8ff57', fontWeight: 600, fontFamily: "'Space Mono',monospace" },
-  userInfo: { display: 'flex', alignItems: 'center', gap: 8 },
-  avatar: { width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' },
+  logo: {
+    fontFamily: "'Space Mono', monospace",
+    fontSize: 18,
+    fontWeight: 700,
+    color: '#b8ff57',
+    letterSpacing: '0.05em',
+  },
+  headerRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+  },
+  scorePill: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: 4,
+    background: '#141414',
+    border: '1px solid #222',
+    borderRadius: 20,
+    padding: '3px 10px',
+  },
+  scoreNum: {
+    fontFamily: "'Space Mono', monospace",
+    fontSize: 12,
+    fontWeight: 700,
+    color: '#b8ff57',
+  },
+  scoreLbl: {
+    fontSize: 10,
+    color: '#555',
+  },
+  logsBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    background: '#1a1a1a',
+    border: '1px solid #2a2a2a',
+    borderRadius: 6,
+    padding: '5px 10px',
+    color: '#b8ff57',
+    fontSize: 12,
+    fontFamily: "'Space Mono', monospace",
+    letterSpacing: '0.05em',
+    textDecoration: 'none',
+    cursor: 'pointer',
+  },
+  userChip: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    background: '#141414',
+    border: '1px solid #222',
+    borderRadius: 20,
+    padding: '4px 12px 4px 4px',
+  },
+  avatar: {
+    width: 24,
+    height: 24,
+    borderRadius: '50%',
+    objectFit: 'cover',
+  },
   avatarFallback: {
-    width: 28, height: 28, borderRadius: '50%',
-    background: '#b8ff5720', color: '#b8ff57',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 12, fontWeight: 600,
+    width: 24,
+    height: 24,
+    borderRadius: '50%',
+    background: '#b8ff5725',
+    color: '#b8ff57',
+    fontSize: 11,
+    fontWeight: 700,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  userName: { fontSize: 13, color: '#bbb' },
+  userMeta: {
+    display: 'flex',
+    flexDirection: 'column',
+    lineHeight: 1.2,
+  },
+  userName: {
+    fontSize: 12,
+    color: '#ccc',
+    fontWeight: 500,
+  },
+  superBadge: {
+    fontSize: 9,
+    color: '#b8ff57',
+    fontFamily: "'Space Mono', monospace",
+    letterSpacing: '0.06em',
+  },
   signOutBtn: {
-    background: 'transparent', color: '#555', border: '1px solid #222',
-    borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
+    background: 'transparent',
+    color: '#444',
+    border: '1px solid #1e1e1e',
+    borderRadius: 4,
+    padding: '4px 10px',
+    fontSize: 11,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
   },
-  main: { padding: '36px 28px', maxWidth: 800, margin: '0 auto' },
-  greeting: { fontSize: 20, fontWeight: 500, color: '#e8e8e0', marginBottom: 28 },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14 },
+
+  // ── Main ────────────────────────────────────────────────────────────────
+  main: {
+    maxWidth: 780,
+    margin: '0 auto',
+    padding: '40px 24px',
+  },
+  greeting: {
+    fontSize: 24,
+    fontWeight: 600,
+    color: '#e8e8e0',
+    marginBottom: 6,
+    letterSpacing: '-0.02em',
+  },
+  sub: {
+    fontSize: 13,
+    color: '#444',
+    marginBottom: 32,
+  },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
+    gap: 14,
+  },
   card: {
-    position: 'relative', border: '1px solid', borderRadius: 12,
-    padding: '20px 16px 18px', textAlign: 'left', transition: 'transform 0.12s, border-color 0.12s',
-    display: 'flex', flexDirection: 'column', gap: 6,
-  },
-  cardIcon: { fontSize: 26, marginBottom: 4 },
-  cardName: { fontSize: 15, fontWeight: 600, color: '#e0e0d8' },
-  cardDesc: { fontSize: 11, color: '#666', lineHeight: 1.5 },
-  soonBadge: {
-    marginTop: 6, alignSelf: 'flex-start', fontSize: 9,
-    background: '#1e1e1e', color: '#555', borderRadius: 3, padding: '2px 6px',
-    fontFamily: "'Space Mono',monospace", letterSpacing: '0.06em',
+    position: 'relative',
+    border: '1px solid',
+    borderRadius: 14,
+    padding: '22px 18px 18px',
+    textAlign: 'left',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    transition: 'transform 0.12s, border-color 0.12s',
   },
   liveDot: {
-    position: 'absolute', top: 12, right: 12,
-    width: 6, height: 6, borderRadius: '50%', opacity: 0.7,
+    position: 'absolute',
+    top: 13,
+    right: 13,
+    width: 6,
+    height: 6,
+    borderRadius: '50%',
+    opacity: 0.8,
+  },
+  cardEmoji: {
+    fontSize: 28,
+    marginBottom: 4,
+  },
+  cardName: {
+    fontSize: 16,
+    fontWeight: 700,
+    letterSpacing: '-0.01em',
+  },
+  cardDesc: {
+    fontSize: 11,
+    color: '#666',
+    lineHeight: 1.55,
+  },
+  soonBadge: {
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    fontSize: 9,
+    background: '#181818',
+    color: '#444',
+    borderRadius: 3,
+    padding: '2px 6px',
+    fontFamily: "'Space Mono', monospace",
+    letterSpacing: '0.08em',
   },
 }
