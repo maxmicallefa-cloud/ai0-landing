@@ -4,315 +4,289 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Audit Logs — AI0</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0a0a0a;color:#e0e0d8;font-family:'Inter',sans-serif;font-size:14px;min-height:100vh}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:2px}
-.page{max-width:1040px;margin:0 auto;padding:24px}
+.center{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.card{background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:28px;width:360px}
+.logo{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;color:#b8ff57;letter-spacing:.1em;margin-bottom:6px}
+.sub{font-size:12px;color:#555;margin-bottom:20px}
+label{display:block;font-size:11px;color:#666;letter-spacing:.06em;margin-bottom:5px}
+.field{width:100%;background:#0e0e0e;border:1px solid #2a2a2a;border-radius:6px;padding:8px 12px;color:#e0e0d8;font-size:13px;font-family:'Space Mono',monospace;outline:none;margin-bottom:14px}
+.field:focus{border-color:#b8ff5760}
+.btn-green{width:100%;background:#b8ff57;color:#0a0a0a;border:none;border-radius:6px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.err{background:#2a1010;border:1px solid #5a2020;color:#ff8080;border-radius:6px;padding:8px 12px;font-size:12px;margin-bottom:12px}
+.page{max-width:1100px;margin:0 auto;padding:24px}
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #1a1a1a}
-.logo{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:#b8ff57;letter-spacing:.1em}
+.logo-sm{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:#b8ff57;letter-spacing:.1em}
 .btns{display:flex;gap:8px}
-.btn{background:#161616;border:1px solid #2a2a2a;color:#bbb;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit}
-.btn:hover{background:#1e1e1e;color:#e0e0d8}
-.btn-red{color:#ff5040;border-color:#ff504030}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.btn{background:#161616;border:1px solid #2a2a2a;color:#bbb;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-block}
+.btn:hover{color:#e0e0d8}.btn-red{color:#ff5040}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
 .stat{background:#111;border:1px solid #1e1e1e;border-radius:8px;padding:14px 16px}
 .stat-num{font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:#b8ff57}
 .stat-lbl{font-size:10px;color:#555;letter-spacing:.08em;margin-top:3px}
-.tabs{display:flex;border-bottom:1px solid #1a1a1a;margin-bottom:16px}
+.tabs{display:flex;border-bottom:1px solid #1a1a1a;margin-bottom:16px;gap:0}
 .tab{padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;color:#555;border-bottom:2px solid transparent;margin-bottom:-1px}
-.tab.active{color:#e0e0d8;border-bottom-color:#b8ff57}
+.tab.on{color:#e0e0d8;border-bottom-color:#b8ff57}
+.tab.danger.on{border-bottom-color:#ff5040;color:#ff8080}
 .filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
-.search{background:#111;border:1px solid #1e1e1e;border-radius:6px;padding:7px 12px;color:#e0e0d8;font-size:12px;font-family:inherit;outline:none;flex:1;min-width:180px}
-.search:focus{border-color:#2a2a2a}
-select.search{cursor:pointer}
+.srch{background:#111;border:1px solid #1e1e1e;border-radius:6px;padding:7px 12px;color:#e0e0d8;font-size:12px;font-family:inherit;outline:none;flex:1;min-width:160px}
 table{width:100%;border-collapse:collapse;font-size:12px}
 th{text-align:left;padding:8px 12px;color:#555;font-weight:500;font-size:10px;letter-spacing:.08em;border-bottom:1px solid #1a1a1a}
 td{padding:9px 12px;border-bottom:1px solid #111;color:#bbb;vertical-align:middle}
-tr:hover td{background:#0e0e0e;color:#e0e0d8}
-.badge{display:inline-flex;align-items:center;gap:3px;border-radius:4px;padding:2px 7px;font-size:10px;font-family:'Space Mono',monospace;letter-spacing:.04em}
+tr:hover td{background:#0e0e0e}
+.badge{display:inline-flex;align-items:center;border-radius:4px;padding:2px 7px;font-size:10px;font-family:'Space Mono',monospace}
 .b-super{background:#b8ff5720;color:#b8ff57;border:1px solid #b8ff5730}
 .b-user{background:#57b8ff20;color:#57b8ff;border:1px solid #57b8ff30}
 .b-login{background:#b8ff5715;color:#b8ff57}
-.b-fail{background:#ff504020;color:#ff5040}
-.b-action{background:#1a1a1a;color:#888}
-.avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px}
-.avatar-fb{width:22px;height:22px;border-radius:50%;background:#b8ff5720;color:#b8ff57;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;margin-right:6px;vertical-align:middle}
+.b-fail{background:#ff504025;color:#ff5040;border:1px solid #ff504030}
+.b-warn{background:#ffd04020;color:#ffd040}
+.b-act{background:#1a1a1a;color:#888}
+.fb{width:22px;height:22px;border-radius:50%;background:#b8ff5720;color:#b8ff57;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;margin-right:6px;vertical-align:middle;flex-shrink:0}
+.fb-red{background:#ff504020;color:#ff5040}
 .pager{display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-size:12px;color:#555}
 .empty{text-align:center;padding:40px;color:#333;font-size:13px}
-.config-card{background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:28px;width:360px;margin:80px auto}
-.config-title{font-family:'Space Mono',monospace;font-size:14px;color:#b8ff57;margin-bottom:6px;letter-spacing:.1em}
-.config-sub{font-size:12px;color:#555;margin-bottom:20px}
-label{display:block;font-size:11px;color:#666;margin-bottom:5px;letter-spacing:.04em}
-input.field{width:100%;background:#0e0e0e;border:1px solid #2a2a2a;border-radius:6px;padding:8px 12px;color:#e0e0d8;font-size:12px;font-family:'Space Mono',monospace;outline:none;margin-bottom:14px}
-input.field:focus{border-color:#b8ff5760}
-.btn-green{background:#b8ff57;color:#0a0a0a;border:none;border-radius:6px;padding:9px 20px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;width:100%}
-.error{background:#2a1010;border:1px solid #5a2020;color:#ff8080;border-radius:6px;padding:8px 12px;font-size:12px;margin-bottom:12px}
-.locked{background:#1a1010;border:1px solid #5a2020;border-radius:12px;padding:28px;width:360px;margin:80px auto;text-align:center}
-@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}.filters{flex-direction:column}}
+.detail-row{background:#0e0e0e;border-bottom:1px solid #111}
+.detail-cell{padding:10px 16px 14px 40px;font-size:11px;color:#666;line-height:1.8}
+.detail-cell span{color:#999;margin-right:16px}
+.threat-high{color:#ff5040}
+.threat-med{color:#ffd040}
+@media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}.header{flex-direction:column;gap:12px;align-items:flex-start}}
 </style>
 </head>
 <body>
-<div id="app"><div style="display:flex;align-items:center;justify-content:center;min-height:100vh;color:#444;font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.1em">LOADING…</div></div>
-
+<div id="root"></div>
 <script>
-const SUPER = 'maxmicallefa@gmail.com'
-const SB_URL_KEY = 'ai0_sb_url'
-const SB_KEY_KEY = 'ai0_sb_key'
+const SUPER='maxmicallefa@gmail.com'
+const K_URL='ai0_sb_url',K_KEY='ai0_sb_key',K_TOK='ai0_access_token'
+let CFG={url:localStorage.getItem(K_URL)||'',key:localStorage.getItem(K_KEY)||'',token:localStorage.getItem(K_TOK)||''}
+let ST={view:'config',err:'',loading:false,tab:'events',logs:[],devices:[],users:[],failed:[],search:'',page:0,pageSize:15,user:null,expandedRow:null}
 
-let sb = null
-let state = {
-  view: 'config', // config | locked | dashboard
-  user: null,
-  tab: 'events',
-  logs: [], devices: [], users: [],
-  search: '', filterType: 'all', filterUser: 'all',
-  page: 0, pageSize: 15, total: 0,
-  loading: false, err: ''
+async function api(path,opts={}){
+  const h={'apikey':CFG.key,'Authorization':'Bearer '+(CFG.token||CFG.key),'Content-Type':'application/json',...(opts.headers||{})}
+  const r=await fetch(CFG.url+'/rest/v1/'+path,{...opts,headers:h})
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.message||r.statusText)}
+  return r.json()
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────
-const storedUrl = localStorage.getItem(SB_URL_KEY)
-const storedKey = localStorage.getItem(SB_KEY_KEY)
-if (storedUrl && storedKey) {
-  sb = supabase.createClient(storedUrl, storedKey)
-  checkSession()
-} else {
+async function boot(){
+  if(!CFG.url||!CFG.key){render();return}
+  // Try to get token from ai0-session
+  try{
+    const s=JSON.parse(localStorage.getItem('ai0-session')||'{}')
+    if(s?.access_token){CFG.token=s.access_token;localStorage.setItem(K_TOK,s.access_token)}
+  }catch(e){}
+  if(CFG.token){
+    try{
+      const r=await fetch(CFG.url+'/auth/v1/user',{headers:{'apikey':CFG.key,'Authorization':'Bearer '+CFG.token}})
+      const u=await r.json()
+      if(u?.email===SUPER){ST.user=u;ST.view='dashboard';await loadAll()}
+      else{ST.view='locked';ST.user=u}
+    }catch(e){CFG.token='';localStorage.removeItem(K_TOK)}
+  }
   render()
 }
 
-async function checkSession() {
-  try {
-    const { data: { session } } = await sb.auth.getSession()
-    if (!session) { state.view = 'config'; render(); return }
-    if (session.user.email !== SUPER) { state.view = 'locked'; state.user = session.user; render(); return }
-    state.user = session.user
-    state.view = 'dashboard'
-    await loadAll()
-    render()
-  } catch(e) {
-    state.err = 'Could not connect to Supabase. Check your credentials.'
-    state.view = 'config'
-    render()
-  }
-}
-
-async function loadAll() {
-  state.loading = true
-  try {
-    const [logsRes, devRes, usersRes] = await Promise.all([
-      sb.from('activity_logs').select('*', { count: 'exact' }).order('logged_at', { ascending: false }).range(state.page * state.pageSize, (state.page + 1) * state.pageSize - 1),
-      sb.from('device_logs').select('*').order('logged_at', { ascending: false }).limit(200),
-      sb.from('profiles').select('id, email, display_name, role, score, last_seen_at')
+async function loadAll(){
+  ST.loading=true;render()
+  try{
+    const [logs,devices,users,failed]=await Promise.all([
+      api('activity_logs?select=*&order=logged_at.desc&limit=500'),
+      api('device_logs?select=*&order=logged_at.desc&limit=200'),
+      api('profiles?select=id,email,display_name,role,score,last_seen_at'),
+      api('failed_logins?select=*&order=attempted_at.desc&limit=200'),
     ])
-    state.logs    = logsRes.data  || []
-    state.total   = logsRes.count || 0
-    state.devices = devRes.data   || []
-    state.users   = usersRes.data || []
-  } catch(e) {
-    console.error(e)
-  }
-  state.loading = false
+    ST.logs=logs||[];ST.devices=devices||[];ST.users=users||[];ST.failed=failed||[]
+  }catch(e){ST.err=e.message}
+  ST.loading=false;render()
 }
 
-// ── Render ────────────────────────────────────────────────────────────────
-function render() {
-  const app = document.getElementById('app')
-  if (state.view === 'config')    { app.innerHTML = renderConfig(); return }
-  if (state.view === 'locked')    { app.innerHTML = renderLocked(); return }
-  app.innerHTML = renderDashboard()
+function render(){
+  document.getElementById('root').innerHTML=
+    ST.view==='config'?renderConfig():
+    ST.view==='locked'?renderLocked():
+    renderDash()
 }
 
-function renderConfig() {
-  return `
-<div class="config-card">
-  <div class="config-title">AUDIT LOGS</div>
-  <div class="config-sub">Enter your Supabase credentials once — saved locally forever.</div>
-  ${state.err ? `<div class="error">${state.err}</div>` : ''}
+function renderConfig(){return`<div class="center"><div class="card">
+  <div class="logo">AUDIT LOGS</div>
+  <div class="sub">Enter your Supabase credentials once — saved locally forever.</div>
+  ${ST.err?`<div class="err">${ST.err}</div>`:''}
   <label>SUPABASE URL</label>
-  <input class="field" id="sb-url" placeholder="https://xxx.supabase.co" value="${localStorage.getItem(SB_URL_KEY)||'https://rnneagijosmsvbakzhpc.supabase.co'}"/>
+  <input class="field" id="f-url" value="${CFG.url||'https://rnneagijosmsvbakzhpc.supabase.co'}"/>
   <label>ANON KEY</label>
-  <input class="field" id="sb-key" type="password" placeholder="eyJ…" value="${localStorage.getItem(SB_KEY_KEY)||''}"/>
-  <button class="btn-green" onclick="doConnect()">Connect</button>
-</div>`
-}
+  <input class="field" id="f-key" type="password" value="${CFG.key}"/>
+  <button class="btn-green" id="cbtn" onclick="doConnect()">Connect</button>
+</div></div>`}
 
-function renderLocked() {
-  return `
-<div class="locked">
+function renderLocked(){return`<div class="center"><div class="card" style="text-align:center">
   <div style="font-size:32px;margin-bottom:12px">🔒</div>
   <div style="font-size:14px;color:#e0e0d8;margin-bottom:6px">Access Denied</div>
-  <div style="font-size:12px;color:#555;margin-bottom:20px">${state.user?.email} is not a SuperAdmin.</div>
+  <div style="font-size:12px;color:#555;margin-bottom:20px">${ST.user?.email} is not a SuperAdmin.</div>
   <button class="btn btn-red" onclick="doSignOut()">Sign out</button>
-</div>`
-}
+</div></div>`}
 
-function renderDashboard() {
-  const u = state.user
-  const avatar = u.user_metadata?.avatar_url
-  const name   = u.user_metadata?.full_name || u.email
+function renderDash(){
+  const u=ST.user
+  const name=u?.user_metadata?.full_name||u?.email||''
+  const av=u?.user_metadata?.avatar_url
+  const logins=ST.logs.filter(l=>l.action==='login'||l.action==='dashboard_view').length
+  const um={}; ST.users.forEach(u=>um[u.id]=u)
 
-  // Stats
-  const logins  = state.logs.filter(l => l.action === 'login' || l.action === 'dashboard_view').length
-  const fails   = state.logs.filter(l => l.action === 'failed_login').length
-  const active  = state.devices.filter(d => d.is_active !== false).length
+  // Events tab
+  let fLogs=ST.logs
+  if(ST.search){const q=ST.search.toLowerCase();fLogs=fLogs.filter(l=>l.action?.toLowerCase().includes(q)||l.app?.toLowerCase().includes(q))}
+  const pS=ST.page*ST.pageSize,pE=pS+ST.pageSize
+  const tP=Math.max(1,Math.ceil(fLogs.length/ST.pageSize))
 
-  // Filter logs
-  let filtered = state.logs
-  if (state.search) {
-    const q = state.search.toLowerCase()
-    filtered = filtered.filter(l => l.action?.toLowerCase().includes(q) || l.app?.toLowerCase().includes(q))
-  }
-  if (state.filterType !== 'all') filtered = filtered.filter(l => l.action === state.filterType)
-  if (state.filterUser !== 'all') filtered = filtered.filter(l => l.user_id === state.filterUser)
+  const evHtml=ST.tab==='events'?`
+    <div class="filters"><input class="srch" placeholder="Search events…" value="${ST.search}" oninput="ST.search=this.value;ST.page=0;render()"/></div>
+    ${fLogs.length===0?'<div class="empty">No events</div>':`
+    <table><thead><tr><th>USER</th><th>ACTION</th><th>APP</th><th>TIME</th></tr></thead><tbody>
+    ${fLogs.slice(pS,pE).map(l=>{const usr=um[l.user_id];return`<tr>
+      <td><span class="fb">${(usr?.email||'?')[0].toUpperCase()}</span>${usr?.email||'—'}</td>
+      <td><span class="badge ${l.action?.includes('fail')?'b-fail':l.action==='login'||l.action==='dashboard_view'?'b-login':'b-act'}">${l.action||'—'}</span></td>
+      <td style="color:#666">${l.app||'—'}</td>
+      <td style="color:#555">${fmt(l.logged_at)}</td>
+    </tr>`}).join('')}
+    </tbody></table>
+    <div class="pager"><span>${fLogs.length} events</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn" onclick="ST.page=Math.max(0,ST.page-1);render()" ${ST.page===0?'disabled':''}>←</button>
+      <span>Page ${ST.page+1}/${tP}</span>
+      <button class="btn" onclick="ST.page=ST.page+1;render()" ${ST.page+1>=tP?'disabled':''}>→</button>
+    </div></div>`}`:'';
 
-  const actions = [...new Set(state.logs.map(l => l.action).filter(Boolean))]
+  // Devices tab
+  const devHtml=ST.tab==='devices'?`
+    <table><thead><tr><th>USER</th><th>DEVICE</th><th>OS</th><th>BROWSER</th><th>SCREEN</th><th>TIMEZONE</th><th>TIME</th></tr></thead><tbody>
+    ${ST.devices.map(d=>{const usr=um[d.user_id];return`<tr>
+      <td><span class="fb">${(usr?.email||'?')[0].toUpperCase()}</span>${usr?.email||'—'}</td>
+      <td style="color:#888">${d.device_type||'—'}</td>
+      <td style="color:#888">${d.os||'—'}</td>
+      <td style="color:#888">${d.browser||'—'}</td>
+      <td style="color:#555">${d.screen_width&&d.screen_height?d.screen_width+'×'+d.screen_height:'—'}</td>
+      <td style="color:#555;font-size:11px">${d.timezone||'—'}</td>
+      <td style="color:#555">${fmt(d.logged_at)}</td>
+    </tr>`}).join('')}
+    </tbody></table>`:'';
 
-  const logsHtml = state.tab === 'events' ? `
-<div class="filters">
-  <input class="search" placeholder="Search events…" value="${state.search}" oninput="setState({search:this.value,page:0})"/>
-  <select class="search" onchange="setState({filterType:this.value,page:0})">
-    <option value="all">All types</option>
-    ${actions.map(a => `<option value="${a}" ${state.filterType===a?'selected':''}>${a}</option>`).join('')}
-  </select>
-  <select class="search" onchange="setState({filterUser:this.value,page:0})">
-    <option value="all">All users</option>
-    ${state.users.map(u => `<option value="${u.id}" ${state.filterUser===u.id?'selected':''}>${u.email}</option>`).join('')}
-  </select>
-</div>
-${filtered.length === 0 ? '<div class="empty">No events found</div>' : `
-<table>
-  <thead><tr>
-    <th>USER</th><th>ACTION</th><th>APP</th><th>TIME</th>
-  </tr></thead>
-  <tbody>
-    ${filtered.slice(state.page*state.pageSize, (state.page+1)*state.pageSize).map(l => {
-      const usr = state.users.find(u => u.id === l.user_id)
-      const av  = usr ? '' : ''
-      return `<tr>
-        <td>${usr ? `<span class="avatar-fb">${(usr.email||'?')[0].toUpperCase()}</span>${usr.email}` : '<span style="color:#444">—</span>'}</td>
-        <td><span class="badge ${l.action?.includes('fail')?'b-fail':l.action==='login'||l.action==='dashboard_view'?'b-login':'b-action'}">${l.action||'—'}</span></td>
-        <td style="color:#666">${l.app||'—'}</td>
-        <td style="color:#555">${fmt(l.logged_at)}</td>
-      </tr>`
-    }).join('')}
-  </tbody>
-</table>
-<div class="pager">
-  <span>${filtered.length} events</span>
-  <div style="display:flex;gap:8px">
-    <button class="btn" onclick="setState({page:Math.max(0,${state.page}-1)})" ${state.page===0?'disabled':''}>←</button>
-    <span style="padding:6px 10px">Page ${state.page+1} / ${Math.max(1,Math.ceil(filtered.length/state.pageSize))}</span>
-    <button class="btn" onclick="setState({page:${state.page}+1})" ${(state.page+1)*state.pageSize>=filtered.length?'disabled':''}>→</button>
-  </div>
-</div>`}` : ''
-
-  const devHtml = state.tab === 'devices' ? `
-<table>
-  <thead><tr><th>USER</th><th>DEVICE</th><th>OS</th><th>BROWSER</th><th>SCREEN</th><th>LAST SEEN</th></tr></thead>
-  <tbody>
-    ${state.devices.map(d => {
-      const usr = state.users.find(u => u.id === d.user_id)
-      return `<tr>
-        <td>${usr ? `<span class="avatar-fb">${(usr.email||'?')[0].toUpperCase()}</span>${usr.email}` : '—'}</td>
-        <td style="color:#888">${d.device_type||'—'}</td>
-        <td style="color:#888">${d.os||'—'}</td>
-        <td style="color:#888">${d.browser||'—'}</td>
-        <td style="color:#555">${d.screen_width&&d.screen_height?`${d.screen_width}×${d.screen_height}`:'—'}</td>
-        <td style="color:#555">${fmt(d.logged_at)}</td>
-      </tr>`
-    }).join('')}
-  </tbody>
-</table>` : ''
-
-  const usersHtml = state.tab === 'users' ? `
-<table>
-  <thead><tr><th>USER</th><th>ROLE</th><th>SCORE</th><th>LAST SEEN</th></tr></thead>
-  <tbody>
-    ${state.users.map(u => `<tr>
-      <td><span class="avatar-fb">${(u.email||'?')[0].toUpperCase()}</span>${u.email}</td>
+  // Users tab
+  const usersHtml=ST.tab==='users'?`
+    <table><thead><tr><th>USER</th><th>ROLE</th><th>SCORE</th><th>LAST SEEN</th></tr></thead><tbody>
+    ${ST.users.map(u=>`<tr>
+      <td><span class="fb">${(u.email||'?')[0].toUpperCase()}</span>${u.email}</td>
       <td><span class="badge ${u.role==='superuser'?'b-super':'b-user'}">${u.role||'user'}</span></td>
       <td style="color:#b8ff57;font-family:'Space Mono',monospace">${(u.score||0).toLocaleString()}</td>
       <td style="color:#555">${fmt(u.last_seen_at)}</td>
     </tr>`).join('')}
-  </tbody>
-</table>` : ''
+    </tbody></table>`:'';
 
-  return `
-<div class="page">
-  <div class="header">
-    <div>
-      <div class="logo">AUDIT LOGS</div>
-      <div style="font-size:11px;color:#555;margin-top:3px">
-        ${avatar?`<img src="${avatar}" class="avatar"/>`:`<span class="avatar-fb">${name[0].toUpperCase()}</span>`}
-        ${name} &nbsp;<span class="badge b-super">SuperAdmin</span>
+  // Failed logins tab
+  const failHtml=ST.tab==='failed'?`
+    ${ST.failed.length===0
+      ?'<div class="empty" style="color:#444">No failed login attempts recorded yet 🎉</div>'
+      :`<table><thead><tr><th>EMAIL</th><th>REASON</th><th>IP ADDRESS</th><th>LOCATION</th><th>ISP</th><th>DEVICE</th><th>OS</th><th>BROWSER</th><th>TIME</th></tr></thead><tbody>
+      ${ST.failed.map((f,i)=>`
+        <tr onclick="ST.expandedRow=ST.expandedRow===i?null:i;render()" style="cursor:pointer">
+          <td><span class="fb fb-red">${(f.email||'?')[0].toUpperCase()}</span><span class="threat-high">${f.email||'unknown'}</span></td>
+          <td><span class="badge b-fail">${f.reason||'unknown'}</span></td>
+          <td style="font-family:'Space Mono',monospace;font-size:11px;color:#ffd040">${f.ip_address||'—'}</td>
+          <td style="color:#888;font-size:11px">${[f.city,f.country].filter(Boolean).join(', ')||'—'}</td>
+          <td style="color:#666;font-size:11px">${f.isp||'—'}</td>
+          <td style="color:#888">${f.device_type||'—'}</td>
+          <td style="color:#888">${f.os||'—'}</td>
+          <td style="color:#888">${f.browser||'—'}</td>
+          <td style="color:#555">${fmt(f.attempted_at)}</td>
+        </tr>
+        ${ST.expandedRow===i?`<tr class="detail-row"><td colspan="9" class="detail-cell">
+          <span>🖥 Screen: ${f.screen_width||'?'}×${f.screen_height||'?'}</span>
+          <span>🌍 Timezone: ${f.timezone||'—'}</span>
+          <span>🌐 Language: ${f.language||'—'}</span>
+          <span>🔗 Referrer: ${f.referrer||'none'}</span>
+          <br/><span style="word-break:break-all;color:#555;font-size:10px">UA: ${f.user_agent||'—'}</span>
+        </td></tr>`:''}
+      `).join('')}
+      </tbody></table>`}`:'';
+
+  return`<div class="page">
+    <div class="header">
+      <div>
+        <div class="logo-sm">AUDIT LOGS</div>
+        <div style="font-size:11px;color:#555;margin-top:3px">
+          ${av?`<img src="${av}" style="width:20px;height:20px;border-radius:50%;vertical-align:middle;margin-right:6px"/>`:`<span class="fb">${name[0]?.toUpperCase()}</span>`}
+          ${name} &nbsp;<span class="badge b-super">SuperAdmin</span>
+        </div>
+      </div>
+      <div class="btns">
+        <a href="/" class="btn">← Dashboard</a>
+        <button class="btn" onclick="loadAll()">↻ Refresh</button>
+        <button class="btn btn-red" onclick="doSignOut()">Sign out</button>
       </div>
     </div>
-    <div class="btns">
-      <a href="/" class="btn">← Dashboard</a>
-      <button class="btn" onclick="refresh()">↻ Refresh</button>
-      <button class="btn btn-red" onclick="doSignOut()">Sign out</button>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-num">${ST.logs.length}</div><div class="stat-lbl">TOTAL EVENTS</div></div>
+      <div class="stat"><div class="stat-num">${logins}</div><div class="stat-lbl">LOGINS</div></div>
+      <div class="stat"><div class="stat-num" style="color:#ff5040">${ST.failed.length}</div><div class="stat-lbl">FAILED ATTEMPTS</div></div>
+      <div class="stat"><div class="stat-num" style="color:#57b8ff">${ST.users.length}</div><div class="stat-lbl">USERS</div></div>
+      <div class="stat"><div class="stat-num" style="color:#ffd040">${[...new Set(ST.failed.map(f=>f.ip_address).filter(Boolean))].length}</div><div class="stat-lbl">UNIQUE IPS</div></div>
     </div>
-  </div>
 
-  <div class="stats">
-    <div class="stat"><div class="stat-num">${state.total}</div><div class="stat-lbl">TOTAL EVENTS</div></div>
-    <div class="stat"><div class="stat-num">${logins}</div><div class="stat-lbl">LOGINS</div></div>
-    <div class="stat"><div class="stat-num" style="color:#ff5040">${fails}</div><div class="stat-lbl">FAILED LOGINS</div></div>
-    <div class="stat"><div class="stat-num" style="color:#57b8ff">${state.users.length}</div><div class="stat-lbl">USERS</div></div>
-  </div>
+    <div class="tabs">
+      <div class="tab ${ST.tab==='events'?'on':''}" onclick="ST.tab='events';ST.page=0;render()">Events</div>
+      <div class="tab ${ST.tab==='devices'?'on':''}" onclick="ST.tab='devices';render()">Devices</div>
+      <div class="tab ${ST.tab==='users'?'on':''}" onclick="ST.tab='users';render()">Users</div>
+      <div class="tab danger ${ST.tab==='failed'?'on':''}" onclick="ST.tab='failed';render()">
+        🚨 Failed Logins ${ST.failed.length>0?`<span style="background:#ff504030;color:#ff5040;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:4px">${ST.failed.length}</span>`:''}
+      </div>
+    </div>
 
-  <div class="tabs">
-    <div class="tab ${state.tab==='events'?'active':''}" onclick="setState({tab:'events',page:0})">Events</div>
-    <div class="tab ${state.tab==='devices'?'active':''}" onclick="setState({tab:'devices'})">Devices</div>
-    <div class="tab ${state.tab==='users'?'active':''}" onclick="setState({tab:'users'})">Users</div>
-  </div>
-
-  ${logsHtml}${devHtml}${usersHtml}
-  ${state.loading?'<div class="empty" style="color:#444">Loading…</div>':''}
-</div>`
+    ${ST.loading?'<div class="empty" style="color:#444">Loading…</div>':''}
+    ${evHtml}${devHtml}${usersHtml}${failHtml}
+  </div>`
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────
-function fmt(ts) {
-  if (!ts) return '—'
-  const d = Date.now() - new Date(ts).getTime()
-  if (d < 60000)   return 'just now'
-  if (d < 3600000) return Math.floor(d/60000)+'m ago'
-  if (d < 86400000)return Math.floor(d/3600000)+'h ago'
+function fmt(ts){
+  if(!ts)return'—'
+  const d=Date.now()-new Date(ts).getTime()
+  if(d<60000)return'just now'
+  if(d<3600000)return Math.floor(d/60000)+'m ago'
+  if(d<86400000)return Math.floor(d/3600000)+'h ago'
   return new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
 }
 
-function setState(patch) {
-  Object.assign(state, patch)
+async function doConnect(){
+  const url=document.getElementById('f-url')?.value?.trim()
+  const key=document.getElementById('f-key')?.value?.trim()
+  if(!url||!key){ST.err='Both fields are required.';render();return}
+  const btn=document.getElementById('cbtn')
+  if(btn){btn.disabled=true;btn.textContent='Connecting…'}
+  CFG.url=url;CFG.key=key
+  localStorage.setItem(K_URL,url);localStorage.setItem(K_KEY,key)
+  try{
+    // Try ai0-session first
+    const s=JSON.parse(localStorage.getItem('ai0-session')||'{}')
+    if(s?.access_token){
+      CFG.token=s.access_token;localStorage.setItem(K_TOK,s.access_token)
+      const r=await fetch(url+'/auth/v1/user',{headers:{'apikey':key,'Authorization':'Bearer '+s.access_token}})
+      const u=await r.json()
+      if(u?.email===SUPER){ST.user=u;ST.view='dashboard';await loadAll();render();return}
+    }
+    ST.err='No active session found. Please sign in from the dashboard first.';render()
+  }catch(e){ST.err='Error: '+e.message;render()}
+}
+
+function doSignOut(){
+  localStorage.removeItem(K_TOK);CFG.token=''
+  ST={view:'config',err:'',loading:false,tab:'events',logs:[],devices:[],users:[],failed:[],search:'',page:0,pageSize:15,user:null,expandedRow:null}
   render()
 }
 
-async function refresh() {
-  await loadAll()
-  render()
-}
-
-async function doConnect() {
-  const url = document.getElementById('sb-url').value.trim()
-  const key = document.getElementById('sb-key').value.trim()
-  if (!url || !key) { state.err = 'Both fields are required.'; render(); return }
-  localStorage.setItem(SB_URL_KEY, url)
-  localStorage.setItem(SB_KEY_KEY, key)
-  sb = supabase.createClient(url, key)
-  await checkSession()
-}
-
-async function doSignOut() {
-  if (sb) await sb.auth.signOut()
-  localStorage.removeItem(SB_URL_KEY)
-  localStorage.removeItem(SB_KEY_KEY)
-  sb = null
-  state = { ...state, view: 'config', user: null, err: '' }
-  render()
-}
+boot()
 </script>
 </body>
 </html>
