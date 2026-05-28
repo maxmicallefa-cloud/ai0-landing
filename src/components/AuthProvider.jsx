@@ -11,13 +11,16 @@ export function AuthProvider({ children }) {
   const [denied,  setDenied]  = useState(false)
 
   useEffect(() => {
-    // Read session directly from localStorage as immediate fallback
+    // Immediate fallback from localStorage
     try {
       const stored = JSON.parse(localStorage.getItem('sb-rnneagijosmsvbakzhpc-auth-token'))
-      if (stored?.user) handleSession(stored)
+      if (stored?.access_token && stored?.user) {
+        setSession(stored)
+        setLoading(false)
+      }
     } catch(e) {}
 
-    // Also do the proper async check
+    // Proper async session check
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) handleSession(session)
       else setLoading(false)
