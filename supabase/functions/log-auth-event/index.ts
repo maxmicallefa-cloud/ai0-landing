@@ -33,22 +33,23 @@ serve(async (req) => {
     )
 
     if (body.reason === 'success' && body.user_id) {
-      // Update device_logs with real IP + geo
-      await sb.from('device_logs')
-        .update({ ip_address: ip })
-        .eq('user_id', body.user_id)
-        .order('logged_at', { ascending: false })
-        .limit(1)
-
-      // Also log to a login_events table with full geo
-      await sb.from('activity_logs').insert({
-        user_id:   body.user_id,
-        app:       'landing',
-        action:    `login | IP: ${ip} | ${[geo.city, geo.country].filter(Boolean).join(', ')} | ${geo.isp || ''}`,
-        logged_at: new Date().toISOString(),
-      }).catch(() => {})
-
-    } else {
+      await sb.from('device_logs').insert({
+        user_id:      body.user_id,
+        device_type:  body.device_type,
+        os:           body.os,
+        browser:      body.browser,
+        screen_width:  body.screen_width,
+        screen_height: body.screen_height,
+        timezone:     body.timezone,
+        language:     body.language,
+        user_agent:   body.user_agent,
+        ip_address:   ip,
+        city:         geo.city,
+        country:      geo.country,
+        isp:          geo.isp,
+        logged_at:    new Date().toISOString(),
+      })}
+   else {
       // Failed login — write to failed_logins
       await sb.from('failed_logins').insert({
         ...body,

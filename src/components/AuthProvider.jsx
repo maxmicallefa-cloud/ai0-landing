@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 
 const ALLOWED = ['maxmicallefa@gmail.com', 'leontrebor112@gmail.com']
 const Ctx = createContext(null)
@@ -46,6 +47,7 @@ export function AuthProvider({ children }) {
   const [user,    setUser]    = useState(null)
   const [loading, setLoading] = useState(true)
   const [denied,  setDenied]  = useState(false)
+  const handledRef = useRef(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -70,6 +72,9 @@ export function AuthProvider({ children }) {
       setLoading(false)
       return
     }
+    // Prevent duplicate handling of same session
+    if (handledRef.current === session.access_token) return
+    handledRef.current = session.access_token
 
     const email = session.user.email
 
@@ -94,15 +99,6 @@ export function AuthProvider({ children }) {
       await supabase.from('activity_logs').insert({
         user_id: session.user.id, app: 'landing', action: 'login',
         logged_at: new Date().toISOString(),
-      })
-    } catch(e) {}
-
-    // Also log device info
-    try {
-      await supabase.from('device_logs').insert({
-        user_id:      session.user.id,
-        ...getDevicePayload(),
-        logged_at:    new Date().toISOString(),
       })
     } catch(e) {}
 
