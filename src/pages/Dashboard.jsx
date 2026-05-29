@@ -47,8 +47,8 @@ const APPS = [
     color: '#bf57ff',
     bg: '#0e001a',
     border: '#bf57ff20',
-    href: import.meta.env.VITE_EYEPIK_URL || '#',
-    live: false,
+    href: import.meta.env.VITE_EYEPIK_URL || 'https://ai0-eyepik.pages.dev',
+    live: true,
   },
 ]
 
