@@ -48,7 +48,7 @@ const APPS = [
     bg: '#0e001a',
     border: '#bf57ff20',
     href: import.meta.env.VITE_EYEPIK_URL || '#',
-    live: false,
+    live: true,
   },
   {
     id: 'signal',
@@ -59,7 +59,7 @@ const APPS = [
     bg: '#0e001a',
     border: '#bf57ff20',
     href: import.meta.env.VITE_SIGNAL_URL || '#',
-    live: false,
+    live: true,
   },
 ]
 
