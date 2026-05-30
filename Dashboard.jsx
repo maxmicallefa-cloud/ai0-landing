@@ -50,6 +50,17 @@ const APPS = [
     href: import.meta.env.VITE_EYEPIK_URL || '#',
     live: false,
   },
+  {
+    id: 'signal',
+    name: 'Signal',
+    emoji: 'S',
+    desc: 'Signal tracker.',
+    color: '#bf57f0',
+    bg: '#0e001a',
+    border: '#bf57ff20',
+    href: import.meta.env.VITE_SIGNAL_URL || '#',
+    live: false,
+  },
 ]
 
 export default function Dashboard() {
