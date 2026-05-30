@@ -53,12 +53,12 @@ const APPS = [
   {
     id: 'signal',
     name: 'Signal',
-    emoji: 'S',
+    emoji: '📡',
     desc: 'Signal tracker.',
     color: '#bf57f0',
     bg: '#0e001a',
     border: '#bf57ff20',
-    href: import.meta.env.VITE_SIGNAL_URL || '#',
+    href: import.meta.env.VITE_SIGNAL_URL || 'https://ai0-signal.pages.dev',
     live: true,
   },
 ]
